@@ -19,3 +19,16 @@ PORT=3000
 HOST=localhost
 PROTOCOL=http
 ```
+
+
+/*
+*
+* const firebaseConfig = {
+  apiKey: "AIzaSyBsNOTMN0yNxWatmJYabrPrN-AnGGo9S4Y",
+  authDomain: "fb-tutorial-66188.firebaseapp.com",
+  projectId: "fb-tutorial-66188",
+  storageBucket: "fb-tutorial-66188.appspot.com",
+  messagingSenderId: "19655782772",
+  appId: "1:19655782772:web:734d7e3969a9ef8662fc21",
+  measurementId: "G-DJJNRZCC8L"
+  };*/
