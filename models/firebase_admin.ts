@@ -41,9 +41,9 @@ export default class FirebaseAdmin {
 
     const config: Config = {
       credential: {
-        projectId: process.env.projectId || '',
-        clientEmail: process.env.clientEmail || '',
-        privateKey: (process.env.privateKey || '').replace(/\\n/g, '\n'),
+        projectId: process.env.PROJECT_ID || '',
+        clientEmail: process.env.CLIENT_EMAIL || '',
+        privateKey: (process.env.PRIVATE_KEY || '').replace(/\\n/g, '\n'),
       },
     };
 
