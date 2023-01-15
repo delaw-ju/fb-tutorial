@@ -8,16 +8,14 @@ interface Props {
   children: React.ReactNode;
 }
 
-const ServiceLayout: React.FC<Props & BoxProps> = function ({ title = '테스트', children, ...boxProps }) {
-  return (
-    <Box {...boxProps}>
-      <Head>
-        <title>{title}</title>
-      </Head>
-      <GNB />
-      {children}
-    </Box>
-  );
-};
+const ServiceLayout: React.FC<Props & BoxProps> = ({ title = '테스트', children, ...boxProps }) => (
+  <Box {...boxProps}>
+    <Head>
+      <title>{title}</title>
+    </Head>
+    <GNB />
+    {children}
+  </Box>
+);
 
 export default ServiceLayout;

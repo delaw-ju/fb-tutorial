@@ -14,7 +14,7 @@ export default class FirebaseAdmin {
 
   private init = false;
 
-  public get Firebase(): FirebaseFirestore.Firestore {
+  public get Firestore(): FirebaseFirestore.Firestore {
     if (!this.init) this.bootstrap();
 
     return admin.firestore();

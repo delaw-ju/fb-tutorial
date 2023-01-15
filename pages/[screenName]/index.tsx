@@ -9,6 +9,33 @@ import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
 
 const DEFAULT_PHOTO = '/empty-avatar.svg';
+
+const postMessage = async ({
+  uid,
+  message,
+  author,
+}: {
+  uid: string;
+  message: string;
+  author?: {
+    displayName: string;
+    photoURL: string;
+  };
+}) => {
+  if (message.length < 1) return { result: false, message: '메세지를 입력 해 주세요.' };
+  try {
+    await fetch('/api/messages.add', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ uid, message, author }),
+    });
+    return { result: true };
+  } catch (err) {
+    console.error(err);
+    return { result: false, message: '메세지 등록 실패' };
+  }
+};
+
 const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -17,8 +44,27 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
 
   if (!userInfo) return <p>사용자를 찾을 수 없습니다.</p>;
 
+  const submitHandler = async () => {
+    const postData: {
+      uid: string;
+      message: string;
+      author?: { displayName: string; photoURL: string };
+    } = { uid: userInfo.uid, message };
+    const author = isAnonymous
+      ? undefined
+      : {
+          displayName: authUser?.displayName ?? 'anonymous',
+          photoURL: authUser?.photoURL ?? DEFAULT_PHOTO,
+        };
+    if (!isAnonymous) postData.author = author;
+
+    const { result } = await postMessage(postData);
+    if (!result) return toast({ title: '메세지 등록 실패.' });
+    setMessage('');
+  };
+
   return (
-    <ServiceLayout title="user home" minH="100vh" backgroundColor="gray.50">
+    <ServiceLayout title={`${authUser?.displayName}'s home`} minH="100vh" backgroundColor="gray.50">
       <Box maxW="md" mx="auto" pt="6">
         <Box borderWidth="1px" borderRadius="lg" overflow="hidden" mb="2">
           <Flex p="6">
@@ -53,7 +99,13 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
                 setMessage(value);
               }}
             />
-            <Button disabled={message.length === 0} bgColor="#FFBB6C" colorScheme="yellow" color="white">
+            <Button
+              onClick={submitHandler}
+              disabled={message.length === 0}
+              bgColor="#FFBB6C"
+              colorScheme="yellow"
+              color="white"
+            >
               등록
             </Button>
           </Flex>

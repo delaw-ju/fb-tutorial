@@ -1,14 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import MemberController from '@/controller/member.ctrl';
 import checkSupportMethod from '@/controller/error/check_support_method';
 import handleError from '@/controller/error/handle_error';
+import MessageController from '@/controller/message.ctrl';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const { method } = req;
   const supportMethod = ['POST'];
   try {
     checkSupportMethod(supportMethod, method!);
-    await MemberController.add(req, res);
+    await MessageController.post(req, res);
   } catch (err) {
     handleError(err, res);
   }
