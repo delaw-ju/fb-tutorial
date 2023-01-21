@@ -1,5 +1,17 @@
 import { GetServerSideProps, NextPage } from 'next';
-import { Avatar, Box, Button, Flex, FormControl, FormLabel, Switch, Text, Textarea, useToast } from '@chakra-ui/react';
+import {
+  Avatar,
+  Box,
+  Button,
+  Flex,
+  FormControl,
+  FormLabel,
+  Switch,
+  Text,
+  Textarea,
+  useToast,
+  VStack,
+} from '@chakra-ui/react';
 import React, { useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import axios, { AxiosResponse } from 'axios';
@@ -7,6 +19,7 @@ import * as process from 'process';
 import ServiceLayout from '@/components/service_layout';
 import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
+import MessageItem from '@/components/message_item';
 
 const DEFAULT_PHOTO = '/empty-avatar.svg';
 
@@ -127,6 +140,32 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
             </FormLabel>
           </FormControl>
         </Box>
+        <VStack spacing={3} mt={6}>
+          <MessageItem
+            uid="123123"
+            displayName="test"
+            photoURL={DEFAULT_PHOTO}
+            isOwner={false}
+            item={{
+              id: 'test',
+              message: 'test',
+              createAt: '2022-05-20T16:43:22+09:00',
+              reply: 'sdfasdkflasdflk;adfs',
+              replyAt: '2022-07-20T16:43:22+09:00',
+            }}
+          />
+          <MessageItem
+            uid="123123"
+            displayName="test"
+            photoURL={DEFAULT_PHOTO}
+            isOwner
+            item={{
+              id: 'test',
+              message: 'test',
+              createAt: '2022-05-20T16:43:22+09:00',
+            }}
+          />
+        </VStack>
       </Box>
     </ServiceLayout>
   );
