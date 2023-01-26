@@ -12,8 +12,17 @@ const post = async (req: NextApiRequest, res: NextApiResponse) => {
   res.status(201).end();
 };
 
+const list = async (req: NextApiRequest, res: NextApiResponse) => {
+  const { uid } = req.query;
+  if (!uid) throw new BadRequestError('uid 누락');
+  const targetId = Array.isArray(uid) ? uid[0] : uid;
+  const messageList = await MessageModel.list({ uid: targetId });
+  res.status(200).json(messageList);
+};
+
 const MessageController = {
   post,
+  list,
 };
 
 export default MessageController;
