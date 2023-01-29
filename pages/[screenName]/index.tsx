@@ -54,10 +54,19 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const [message, setMessage] = useState('');
   const [messageList, setMessageList] = useState<InMessage[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [messageListFetchTrigger, setMessageListFetchTrigger] = useState(false);
   const toast = useToast();
   const { authUser } = useAuth();
 
   if (!userInfo) return <p>사용자를 찾을 수 없습니다.</p>;
+
+  const fetchMessage = async ({ uid, messageId }: { uid: string; messageId: string }) => {
+    const res = await fetch(`/api/messages.info?uid=${uid}&messageId=${messageId}`);
+    if (res.status === 200) {
+      const updatedMessage: InMessage = await res.json();
+      setMessageList((prev) => prev.map((pm) => (pm.id === updatedMessage.id ? updatedMessage : pm)));
+    }
+  };
 
   const fetchMessageList = async (uid: string) => {
     try {
@@ -87,13 +96,14 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
     const { result } = await postMessage(postData);
     if (!result) return toast({ title: '메세지 등록 실패.' });
     setMessage('');
+    setMessageListFetchTrigger((prev) => !prev);
   };
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (userInfo === null) return;
     fetchMessageList(userInfo.uid);
-  }, [userInfo]);
+  }, [userInfo, messageListFetchTrigger]);
 
   return (
     <ServiceLayout title={`${authUser?.displayName}'s home`} minH="100vh" backgroundColor="gray.50">
@@ -151,7 +161,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
               isChecked={isAnonymous}
               onChange={() => {
                 if (!authUser) return toast({ title: '로그인이 필요합니다.' });
-                setIsAnonymous(!isAnonymous);
+                setIsAnonymous((prev) => !prev);
               }}
             />
             <FormLabel htmlFor="anonymous" margin={0} fontSize="xx-small">
@@ -168,6 +178,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
               photoURL={userInfo.displayName ?? DEFAULT_PHOTO}
               isOwner={authUser?.uid === userInfo?.uid}
               item={_message}
+              onSendComplete={() => fetchMessage({ uid: userInfo?.uid, messageId: _message.id })}
             />
           ))}
         </VStack>
