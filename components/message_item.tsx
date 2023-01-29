@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, Box, Button, Divider, Flex, Text, Textarea } from '@chakra-ui/react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { InMessage } from '@/models/message/in_message';
@@ -13,10 +13,25 @@ interface Props {
   photoURL: string;
   isOwner: boolean;
   item: InMessage;
+  onSendComplete: () => void;
 }
 
-function MessageItem({ displayName, photoURL, isOwner, item }: Props) {
+function MessageItem({ uid, displayName, photoURL, isOwner, item, onSendComplete }: Props) {
   const hasReply = !!item.reply;
+  const [reply, setReply] = useState('');
+
+  const postReply = async () => {
+    const result = await fetch('/api/messages.add.reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid,
+        messageId: item.id,
+        reply,
+      }),
+    });
+    if (result.status < 300) onSendComplete();
+  };
 
   return (
     <Box borderRadius="md" width="full" bg="white" boxShadow="md">
@@ -76,9 +91,18 @@ function MessageItem({ displayName, photoURL, isOwner, item }: Props) {
                   overflow="hidden"
                   minH="unset"
                   fontSize="xs"
+                  value={reply}
+                  onChange={({ currentTarget: { value } }) => setReply(value)}
                 />
               </Box>
-              <Button colorScheme="pink" size="sm" variant="solid" bgColor="#ff75b5">
+              <Button
+                colorScheme="pink"
+                size="sm"
+                variant="solid"
+                bgColor="#ff75b5"
+                disabled={!reply}
+                onClick={postReply}
+              >
                 등록
               </Button>
             </Box>

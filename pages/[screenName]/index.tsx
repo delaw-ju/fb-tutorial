@@ -12,7 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import axios, { AxiosResponse } from 'axios';
 import * as process from 'process';
@@ -20,6 +20,7 @@ import ServiceLayout from '@/components/service_layout';
 import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
 import MessageItem from '@/components/message_item';
+import { InMessage } from '@/models/message/in_message';
 
 const DEFAULT_PHOTO = '/empty-avatar.svg';
 
@@ -51,11 +52,32 @@ const postMessage = async ({
 
 const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const [message, setMessage] = useState('');
+  const [messageList, setMessageList] = useState<InMessage[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [messageListFetchTrigger, setMessageListFetchTrigger] = useState(false);
   const toast = useToast();
   const { authUser } = useAuth();
 
   if (!userInfo) return <p>사용자를 찾을 수 없습니다.</p>;
+
+  const fetchMessage = async ({ uid, messageId }: { uid: string; messageId: string }) => {
+    const res = await fetch(`/api/messages.info?uid=${uid}&messageId=${messageId}`);
+    if (res.status === 200) {
+      const updatedMessage: InMessage = await res.json();
+      setMessageList((prev) => prev.map((pm) => (pm.id === updatedMessage.id ? updatedMessage : pm)));
+    }
+  };
+
+  const fetchMessageList = async (uid: string) => {
+    try {
+      const res = await fetch(`/api/messages.list?uid=${uid}`);
+      if (res.status === 200) {
+        setMessageList(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const submitHandler = async () => {
     const postData: {
@@ -74,7 +96,14 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
     const { result } = await postMessage(postData);
     if (!result) return toast({ title: '메세지 등록 실패.' });
     setMessage('');
+    setMessageListFetchTrigger((prev) => !prev);
   };
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (userInfo === null) return;
+    fetchMessageList(userInfo.uid);
+  }, [userInfo, messageListFetchTrigger]);
 
   return (
     <ServiceLayout title={`${authUser?.displayName}'s home`} minH="100vh" backgroundColor="gray.50">
@@ -132,7 +161,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
               isChecked={isAnonymous}
               onChange={() => {
                 if (!authUser) return toast({ title: '로그인이 필요합니다.' });
-                setIsAnonymous(!isAnonymous);
+                setIsAnonymous((prev) => !prev);
               }}
             />
             <FormLabel htmlFor="anonymous" margin={0} fontSize="xx-small">
@@ -141,30 +170,17 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
           </FormControl>
         </Box>
         <VStack spacing={3} mt={6}>
-          <MessageItem
-            uid="123123"
-            displayName="test"
-            photoURL={DEFAULT_PHOTO}
-            isOwner={false}
-            item={{
-              id: 'test',
-              message: 'test',
-              createAt: '2022-05-20T16:43:22+09:00',
-              reply: 'sdfasdkflasdflk;adfs',
-              replyAt: '2022-07-20T16:43:22+09:00',
-            }}
-          />
-          <MessageItem
-            uid="123123"
-            displayName="test"
-            photoURL={DEFAULT_PHOTO}
-            isOwner
-            item={{
-              id: 'test',
-              message: 'test',
-              createAt: '2022-05-20T16:43:22+09:00',
-            }}
-          />
+          {messageList.map((_message) => (
+            <MessageItem
+              key={`message-${_message.id}`}
+              uid={userInfo.uid ?? ''}
+              displayName={userInfo.displayName ?? ''}
+              photoURL={userInfo.displayName ?? DEFAULT_PHOTO}
+              isOwner={authUser?.uid === userInfo?.uid}
+              item={_message}
+              onSendComplete={() => fetchMessage({ uid: userInfo?.uid, messageId: _message.id })}
+            />
+          ))}
         </VStack>
       </Box>
     </ServiceLayout>
