@@ -12,10 +12,12 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import axios, { AxiosResponse } from 'axios';
 import * as process from 'process';
+import { TriangleDownIcon } from '@chakra-ui/icons';
+import { useQuery } from 'react-query';
 import ServiceLayout from '@/components/service_layout';
 import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
@@ -54,11 +56,12 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const [message, setMessage] = useState('');
   const [messageList, setMessageList] = useState<InMessage[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
+
   const [messageListFetchTrigger, setMessageListFetchTrigger] = useState(false);
   const toast = useToast();
   const { authUser } = useAuth();
-
-  if (!userInfo) return <p>사용자를 찾을 수 없습니다.</p>;
 
   const fetchMessage = async ({ uid, messageId }: { uid: string; messageId: string }) => {
     const res = await fetch(`/api/messages.info?uid=${uid}&messageId=${messageId}`);
@@ -68,23 +71,12 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
     }
   };
 
-  const fetchMessageList = async (uid: string) => {
-    try {
-      const res = await fetch(`/api/messages.list?uid=${uid}`);
-      if (res.status === 200) {
-        setMessageList(await res.json());
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const submitHandler = async () => {
     const postData: {
       uid: string;
       message: string;
       author?: { displayName: string; photoURL: string };
-    } = { uid: userInfo.uid, message };
+    } = { uid: userInfo?.uid || '', message };
     const author = isAnonymous
       ? undefined
       : {
@@ -96,15 +88,32 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
     const { result } = await postMessage(postData);
     if (!result) return toast({ title: '메세지 등록 실패.' });
     setMessage('');
-    setMessageListFetchTrigger((prev) => !prev);
+    setPage(1);
+    setTimeout(() => setMessageListFetchTrigger((prev) => !prev), 50);
   };
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    if (userInfo === null) return;
-    fetchMessageList(userInfo.uid);
-  }, [userInfo, messageListFetchTrigger]);
-
+  const messageListQueryKey = ['messageList', userInfo?.uid, page, messageListFetchTrigger];
+  useQuery(
+    messageListQueryKey,
+    async () =>
+      await axios.get<{
+        totalElements: number;
+        totalPages: number;
+        page: number;
+        size: number;
+        contents: InMessage[];
+      }>(`/api/messages.list?uid=${userInfo?.uid}&page=${page}&size=10`),
+    {
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+      onSuccess: ({ data }) => {
+        setTotalPages(data.totalPages);
+        const isFirstPage = data.page === 1;
+        setMessageList((prev) => (isFirstPage ? [...data.contents] : [...prev, ...data.contents]));
+      },
+    },
+  );
+  if (!userInfo) return <p>사용자를 찾을 수 없습니다.</p>;
   return (
     <ServiceLayout title={`${authUser?.displayName}'s home`} minH="100vh" backgroundColor="gray.50">
       <Box maxW="md" mx="auto" pt="6">
@@ -182,6 +191,17 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
             />
           ))}
         </VStack>
+        {totalPages > page && (
+          <Button
+            width="full"
+            mt={2}
+            fontSize="sm"
+            leftIcon={<TriangleDownIcon />}
+            onClick={() => setPage((prev) => prev + 1)}
+          >
+            더보기
+          </Button>
+        )}
       </Box>
     </ServiceLayout>
   );

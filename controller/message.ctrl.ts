@@ -13,10 +13,21 @@ const post = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 const list = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { uid } = req.query;
+  const { uid, page, size } = req.query;
   if (!uid) throw new BadRequestError('uid 누락');
+
+  const convertPage = page ?? '1';
+  const convertSize = size || '10';
+
   const targetId = Array.isArray(uid) ? uid[0] : uid;
-  const messageList = await MessageModel.list({ uid: targetId });
+  const pageToStr = Array.isArray(convertPage) ? convertPage[0] : convertPage;
+  const sizeToStr = Array.isArray(convertSize) ? convertSize[0] : convertSize;
+
+  const messageList = await MessageModel.listWithPage({
+    uid: targetId,
+    page: parseInt(pageToStr, 10),
+    size: parseInt(sizeToStr, 10),
+  });
   res.status(200).json(messageList);
 };
 

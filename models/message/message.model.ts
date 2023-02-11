@@ -3,6 +3,7 @@ import FirebaseAdmin from '@/models/firebase_admin';
 import memberModel from '@/models/member/member.model';
 import CustomServerError from '@/controller/error/custom_server_error';
 import { InMessage, InMessageServer } from '@/models/message/in_message';
+import { InAuthUser } from '@/models/in_auth_user';
 
 const MESSAGE_COL = 'message';
 
@@ -25,6 +26,9 @@ const post = async ({
     const memberDoc = await transaction.get(memberRef);
     if (!memberDoc.exists) throw new CustomServerError({ statusCode: 400, message: '존재하지 않는 사용자' });
 
+    const memberInfo = memberDoc.data() as InAuthUser & { messageCount?: number };
+    const { messageCount = 0 } = memberInfo;
+
     const newMessageRef = memberRef.collection(MESSAGE_COL).doc();
     const newMessageBody: {
       message: string;
@@ -33,14 +37,17 @@ const post = async ({
         displayName: string;
         photoURL?: string;
       };
+      messageNo: number;
     } = {
       message,
       createAt: firestore.FieldValue.serverTimestamp(),
+      messageNo: messageCount + 1,
     };
 
     if (author) newMessageBody.author = author;
 
     await transaction.set(newMessageRef, newMessageBody);
+    await transaction.update(memberRef, { messageCount: messageCount + 1 });
   });
 };
 
@@ -61,6 +68,55 @@ const list = async ({ uid }: { uid: string }) => {
       } as InMessage;
     });
     return data;
+  });
+  return listData;
+};
+
+const listWithPage = async ({ uid, page = 1, size = 10 }: { uid: string; page?: number; size: number }) => {
+  const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
+  const listData = await Firestore.runTransaction(async (transaction) => {
+    const memberDoc = await transaction.get(memberRef);
+    if (!memberDoc.exists) throw new CustomServerError({ statusCode: 400, message: '존재하지 않는 사용자' });
+
+    const memberInfo = memberDoc.data() as InAuthUser & { messageCount?: number };
+    const { messageCount = 0 } = memberInfo;
+
+    const totalElements = messageCount;
+    const remains = totalElements % size;
+    const totalPages = (totalElements - remains) / size + (remains > 0 ? 1 : 0);
+    const startAt = totalElements - (page - 1) * size;
+    if (startAt < 0) {
+      return {
+        totalElements,
+        totalPages: 0,
+        page,
+        size,
+        contents: [],
+      };
+    }
+
+    const messageCollection = await memberRef
+      .collection(MESSAGE_COL)
+      .orderBy('messageNo', 'desc')
+      .startAt(startAt)
+      .limit(size);
+    const messageCollectionDoc = await transaction.get(messageCollection);
+    const contents = messageCollectionDoc.docs.map((res) => {
+      const docData = res.data() as Omit<InMessageServer, 'id'>;
+      return {
+        ...docData,
+        id: res.id,
+        createAt: docData.createAt.toDate().toISOString(),
+        replyAt: docData.replyAt ? docData.replyAt.toDate().toISOString() : undefined,
+      } as InMessage;
+    });
+    return {
+      totalElements,
+      totalPages,
+      page,
+      size,
+      contents,
+    };
   });
   return listData;
 };
@@ -103,6 +159,7 @@ const postReply = async ({ uid, messageId, reply }: { uid: string; messageId: st
 const MessageModel = {
   post,
   list,
+  listWithPage,
   get,
   postReply,
 };
